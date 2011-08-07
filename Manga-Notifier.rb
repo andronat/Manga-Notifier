@@ -5,7 +5,7 @@
 # Name        : 
 #			Manga-Notifier.rb
 # Version    : 
-#			v0.04a
+#			v0.05
 #			
 #====================================================================
 
@@ -14,8 +14,11 @@ class MangaReader
   require 'hpricot'
   require 'open-uri'
   require 'timeout'
+  require 'rbconfig'
 
-  def initialize()
+  def initialize
+    void = RbConfig::CONFIG['host_os'] =~ /msdos|mswin|djgpp|mingw/ ? 'NUL' : '/dev/null'
+    @figlet = system "figlet -v >>#{void} 2>&1"
   end
 
   def  manga
@@ -25,13 +28,13 @@ class MangaReader
     
     if all_names.length == 0
       puts 'No new manga for today, sorry :('
-      print `figlet ':(' `
+      print `figlet ':(' ` if @figlet
     elsif all_names.length == 1
-      print `figlet #{all_names[0].tr_s("\'", " ")}`
+      print `figlet #{all_names[0].tr_s("\'", " ")}` if @figlet
       puts '-----> ' + all_names.length.to_s() + ' New Manga' +' <-----' + "\n From http://mangastream.com/ \n "
       puts 'Only manga -> ' + all_names[0] + '   Posted at: ' + all_times[0]
     else
-      print `figlet #{all_names[0].tr_s("\'", " ")}`
+      print `figlet #{all_names[0].tr_s("\'", " ")}` if @figlet
       puts '-----> ' + all_names.length.to_s() + ' New Mangas' +' <-----' + "\n From http://mangastream.com/ \n "
       all_names.length.times do |i|
     	  puts (i+1).to_s() + ') ' + all_names[i] + '   Posted at: ' + all_times[i]
