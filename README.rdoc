@@ -1,9 +1,9 @@
 == Manga-Notifier
 
-Manga-Notifier is a simple ruby script that notifies you for new releases of One Piece
+#Manga-Notifier is a simple ruby script that notifies you for new releases of One Piece
 	using data from http://mangastream.com and http://www.watchop.com
 	
-New Feature!
+#New Feature!
 	Manga-Notifier can now download your favorite manga! (more features will come soon!)
 
 === Setup
