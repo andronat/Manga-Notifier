@@ -1,25 +1,25 @@
 == Manga-Notifier
 
 Manga-Notifier is a simple ruby script that notifies you for new releases of One Piece
-	using data from http://mangastream.com/ and http://www.watchop.com/
+	using data from http://mangastream.com and http://www.watchop.com
 	
 New Feature!
 	Manga-Notifier can now download your favorite manga! (more features will come soon!)
 
 === Setup
 
-0. Rubygems needed!!!
+1. Rubygems needed!!!
 
-1. Install required gems at the command prompt if you haven't yet:
+2. Install required gems at the command prompt if you haven't yet:
 
     gem install hpricot open-uri timeout
 
-2. Install figlet from:
+3. Install figlet from:
 
-	http://www.figlet.org/
+	http://www.figlet.org
 	(e.g. try macports for Mac OS X)
 
-3. Run: 
+4. Run: 
 	
 	ruby Manga-Notifier.rb
 
