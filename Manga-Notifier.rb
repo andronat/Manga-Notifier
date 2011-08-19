@@ -5,11 +5,11 @@
 # Name        : 
 #			Manga-Notifier.rb
 # Version    : 
-#			v0.06
+#			v0.07
 #			
 #====================================================================
 
-class MangaReader
+class MangaNotifier
   require 'rubygems'
   require 'hpricot'
   require 'open-uri'
@@ -17,47 +17,61 @@ class MangaReader
   require 'rbconfig'
   require 'optparse'
 
-  def initialize
-    void = RbConfig::CONFIG['host_os'] =~ /msdos|mswin|djgpp|mingw/ ? 'NUL' : '/dev/null'
-    @figlet = system "figlet -v >>#{void} 2>&1"
-    @manga_url = 'http://mangastream.com'
-    @anime_url = 'http://www.watchop.com'
-  end
-
-  def  manga
-    @page = Hpricot(open(@manga_url).read)
-    @all_names = @page.search('//li[@class="new"]/a').collect {|name| name.innerHTML}
-    @all_times = @page.search('//li[@class="new"]/em').collect {|time| time.innerHTML}
+  def initialize(options)
     
-    if @all_names.length == 0
-      puts 'No new manga for today, sorry :('
-      print `figlet ':(' ` if @figlet
-    elsif @all_names.length == 1
-      print `figlet #{@all_names[0].tr_s("\'", " ")}` if @figlet
-      puts '-----> ' + @all_names.length.to_s() + ' New Manga <-----' 
-      puts ' From http://mangastream.com/'
-      puts 'Only manga -> ' + @all_names[0] + '   Posted at: ' + @all_times[0]
-    else
-      print `figlet #{@all_names[0].tr_s("\'", " ")}` if @figlet
-      puts '-----> ' + @all_names.length.to_s() + ' New Mangas <-----' 
-      puts ' From http://mangastream.com/'
-      @all_names.length.times do |i|
-    	  puts (i+1).to_s() + ') ' + @all_names[i] + '   Posted at: ' + @all_times[i]
-      end
+    m = MangaReader.new
+    m.print_manga if options[:manga]
+    m.bell if options[:bell]
+    AnimeReader.new.print_anime if options[:anime]
+    Downloader.new.download(m) if options[:download]
+  end
+  
+  class MangaReader
+    
+    attr_accessor :page, :manga_names, :manga_times
+    
+    def initialize
+      void = RbConfig::CONFIG['host_os'] =~ /msdos|mswin|djgpp|mingw/ ? 'NUL' : '/dev/null'
+      @figlet = system "figlet -v >>#{void} 2>&1"
+      @manga_url = 'http://mangastream.com'
     end
     
-    @my_thread = Thread.new {
-      Thread.stop
+    def print_manga
+      @page = Hpricot(open(@manga_url).read)
+      @manga_names = @page.search('//li[@class="new"]/a').collect {|name| name.innerHTML}
+      @manga_times = @page.search('//li[@class="new"]/em').collect {|time| time.innerHTML}
+
+      if @manga_names.length == 0
+        puts 'No new manga for today, sorry :('
+        print `figlet ':(' ` if @figlet
+      elsif @manga_names.length == 1
+        print `figlet #{@manga_names[0].tr_s("\'", " ")}` if @figlet
+        puts '-----> ' + @manga_names.length.to_s() + ' New Manga <-----' 
+        puts ' From http://mangastream.com/'
+        puts 'Only manga -> ' + @manga_names[0] + '   Posted at: ' + @manga_times[0]
+      else
+        print `figlet #{@manga_names[0].tr_s("\'", " ")}` if @figlet
+        puts '-----> ' + @manga_names.length.to_s() + ' New Mangas <-----' 
+        puts ' From http://mangastream.com/'
+        @manga_names.length.times do |i|
+      	  puts (i+1).to_s() + ') ' + @manga_names[i] + '   Posted at: ' + @manga_times[i]
+        end
+      end
+      
+    end
+    
+    def bell
       b=[]
-      @all_names.size.times { |i| b[i] = (@all_names[i].include? "One Piece") && (@all_times[i].include? "Today") }
+      @manga_names.size.times { |i| b[i] = (@manga_names[i].include? "One Piece") && (@manga_times[i].include? "Today") }
       if b.include?(true)
-        flag = true
+        flag = 0
         print "Press enter to exit!"
-        while flag do
+        while flag < 10 do
           begin
+            flag += 1
             Timeout::timeout(1) {
               value = gets
-              flag = false
+              flag = 10
             }
           rescue Timeout::Error
             10.times {
@@ -67,65 +81,81 @@ class MangaReader
           end
         end
       end
-    }
-
-    return self
+    end
+    
   end
 
-  def anime
-    @my_thread.run
-    @my_thread.join
+  class AnimeReader
     
-    all_names = Hpricot(open(@anime_url).read).search('//*[@class="movie"]')
-    puts "\n \n "
-    puts '-----> One Piece Anime <-----' 
-    puts ' From http://www.watchop.com/'
-    puts 'Current anime: ' + all_names[0].innerHTML
+    attr_accessor :page, :manga_names, :manga_times
     
-    return self
+    def initialize
+      @anime_url = 'http://www.watchop.com'
+    end
+    
+    def print_anime
+      all_names = Hpricot(open(@anime_url).read).search('//*[@class="movie"]')
+      puts "\n \n "
+      puts '-----> One Piece Anime <-----' 
+      puts ' From http://www.watchop.com/'
+      puts 'Current anime: ' + all_names[0].innerHTML
+    end
+    
   end
   
-  def downloader
-    return self if @all_names.length == 0
-        
-    begin
-      puts "\n \n "
-      puts "Choose which one manga would you like to download:"
-      @all_names.length.times do |i|
-    	  puts (i+1).to_s() + ') ' + @all_names[i] + '   Posted at: ' + @all_times[i]
-      end
-      
-      number = Integer(gets.chomp)
-    end while number < 1 || number > @all_names.size
+  class Downloader
     
-    first_page_url = @page.search('//li[@class="new"]/a').collect { |name| name.attributes['href'] }[number-1].chop!
-    i=1
-    
-    directory_name = File.dirname(__FILE__) + "/" + @all_names[number-1]
-    if !FileTest::directory?(directory_name)
-      Dir::mkdir(directory_name)
-    end
-    
-    Dir::chdir(directory_name)
-    
-    puts 'Downloading...'
-    
-    loop do
+    def download(manga)
+      return self if manga.manga_names.length == 0
+
       begin
-        img_url = Hpricot(open("#{first_page_url}#{i}")).search('//div[@id="p"]/a').collect {|link| link.inner_html}.first.split("\"")[1]
-
-        open("#{i}.png", 'wb') do |file|
-          file << open(img_url).read
+        puts "\n \n "
+        puts "Choose which one manga would you like to download."
+        puts "Or -1 to cancel"
+        manga.manga_names.length.times do |i|
+      	  puts (i+1).to_s() + ') ' + manga.manga_names[i] + '   Posted at: ' + manga.manga_times[i]
         end
+        
+        begin
+          number = Integer(gets.chomp)
+        rescue Exception
+          number = -1
+        end
+        
+        return if number == -1
+        
+      end while number < 1 || number > manga_names.size
 
-        i+=1
-      rescue OpenURI::HTTPError
-        break
+      first_page_url = manga.page.search('//li[@class="new"]/a').collect { |name| name.attributes['href'] }[number-1].chop!
+      i=1
+
+      directory_name = File.dirname(__FILE__) + "/" + manga_names[number-1]
+      if !FileTest::directory?(directory_name)
+        Dir::mkdir(directory_name)
       end
+
+      Dir::chdir(directory_name)
+
+      puts 'Downloading...'
+
+      loop do
+        begin
+          img_url = Hpricot(open("#{first_page_url}#{i}")).search('//div[@id="p"]/a').collect {|link| link.inner_html}.first.split("\"")[1]
+
+          open("#{i}.png", 'wb') do |file|
+            file << open(img_url).read
+          end
+
+          i+=1
+        rescue OpenURI::HTTPError
+          break
+        end
+      end
+
+      puts 'You manga is ready!'
+      puts "You can find it at #{directory_name}"
+
     end
-    
-    puts 'You manga is ready!'
-    puts "You can find it at #{directory_name}"
     
   end
   
@@ -146,11 +176,18 @@ optparse = OptionParser.new do |opts|
   options[:manga] = true
   opts.on( '-m', '--no-manga', 'Omit manga notify.' ) do
    options[:manga] = false
+   options[:bell] = false
+   options[:download] = false
   end
 
   options[:download] = true
   opts.on( '-d', '--no-download', 'Omit manga downloader.' ) do
    options[:download] = false
+  end
+
+  options[:bell] = true
+  opts.on( '-b', '--no-bell', 'Omit bell notifier.' ) do
+   options[:bell] = false
   end
 
   opts.on( '-v', '--version', 'Display current version:' ) do
@@ -172,8 +209,5 @@ rescue OptionParser::InvalidOption => e
   exit 1
 end
 
-m = MangaReader.new
-m.manga if options[:manga]
-m.anime if options[:anime]
-m.downloader if options[:download]
+m = MangaNotifier.new options
 exit 0
