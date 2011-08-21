@@ -124,12 +124,12 @@ class MangaNotifier
         
         return if number == -1
         
-      end while number < 1 || number > manga_names.size
+      end while number < 1 || number > manga.manga_names.size
 
       first_page_url = manga.page.search('//li[@class="new"]/a').collect { |name| name.attributes['href'] }[number-1].chop!
       i=1
 
-      directory_name = File.dirname(__FILE__) + "/" + manga_names[number-1]
+      directory_name = File.dirname(__FILE__) + "/" + manga.manga_names[number-1]
       if !FileTest::directory?(directory_name)
         Dir::mkdir(directory_name)
       end
