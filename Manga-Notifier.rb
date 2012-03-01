@@ -5,7 +5,7 @@
 # Name        : 
 #			Manga-Notifier.rb
 # Version    : 
-#			v0.07
+#			v0.08
 #			
 #====================================================================
 
@@ -140,7 +140,7 @@ class MangaNotifier
 
       loop do
         begin
-          img_url = Hpricot(open("#{first_page_url}#{i}")).search('//div[@id="p"]/a').collect {|link| link.inner_html}.first.split("\"")[1]
+          img_url = Hpricot(open("#{first_page_url}#{i}")).search('//img[@id="p"]').first.attributes["src"]
 
           open("#{i}.png", 'wb') do |file|
             file << open(img_url).read
